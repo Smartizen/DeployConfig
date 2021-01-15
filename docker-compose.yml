@@ -2,55 +2,37 @@ version: '3'
 
 services:
   backend:
-    hostname: backend
-    container_name: backend
     build: ./backend
+    container_name: backend
+    restart: unless-stopped
     working_dir: /usr/src/app
     volumes:
       - ./backend:/usr/src/app
-    expose:
-      - 3000
+      - ./backend/node_modules:/usr/src/app/node_modules
     ports:
-      - '3000:3000'
+      - '4000:4000'
     depends_on:
-      - mongo1
-      - mongo2
-      - mongo3
-      # - rabbitmq3
+      - postgres
+      - sensor_backend
     networks:
       - app-network
-    restart: always
-    command: 'yarn start'
+    command: 'yarn start:dev'
 
-  # mongo:
-  #   hostname: mongo1
-  #   image: mongo
+  # admin:
+  #   hostname: admin
+  #   image: 'node:10-alpine'
+  #   container_name: admin
   #   restart: always
-  #   container_name: mongo1
-  #   environment:
-  #     MONGO_INITDB_ROOT_USERNAME: root
-  #     MONGO_INITDB_ROOT_PASSWORD: '123456'
-  #     ME_CONFIG_MONGODB_ADMINUSERNAME: root
-  #     ME_CONFIG_MONGODB_ADMINPASSWORD: 123456
+  #   working_dir: /app
   #   volumes:
-  #     - ./data/mongo/db:/data/db
-  #     - ./data/mongo/configdb:/data/configdb
-  #   networks:
-  #     - app-network
-
-  # mongo-express:
-  #   image: mongo-express
-  #   container_name: 'mongo-express'
-  #   restart: always
-  #   ports:
-  #     - 8081:8081
+  #     - ./admin:/app
   #   depends_on:
-  #     - mongo
-  #   environment:
-  #     ME_CONFIG_MONGODB_ADMINUSERNAME: root
-  #     ME_CONFIG_MONGODB_ADMINPASSWORD: '123456'
+  #     - backend
+  #   ports:
+  #     - '8000:8000'
   #   networks:
   #     - app-network
+  #   command: 'yarn serve'
 
   # frontend:
   #   hostname: frontend
@@ -68,79 +50,77 @@ services:
   #     - app-network
   #   command: 'yarn serve'
 
-  mongo1:
-    hostname: mongo1
-    container_name: mongo1
-    image: mongo
+  postgres:
+    image: postgres:12-alpine
+    container_name: 'postgres'
+    restart: always
+    environment:
+      POSTGRES_DB: hydroponic
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: '123456'
+    tty: true
+    ports:
+      - 5432:5432
     volumes:
-      - ./data/data1/db:/data/db
-      - ./data/data1/configdb:/data/configdb
+      - ./db_data/postgres:/var/lib/postgresql/data
     networks:
       - app-network
-    expose:
-      - 27017
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: 123456
-    ports:
-      - 30001:27017
-    restart: always
-    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'devrs']
 
-  mongo2:
-    hostname: mongo2
-    container_name: mongo2
-    image: mongo
-    volumes:
-      - ./data/data2/db:/data/db
-      - ./data/data2/configdb:/data/configdb
+  adminer:
+    image: adminer
+    container_name: 'adminer'
+    restart: always
+    ports:
+      - 8082:8080
     networks:
       - app-network
-    expose:
-      - 27017
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: 123456
-    ports:
-      - 30002:27017
-    restart: always
-    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'devrs']
 
-  mongo3:
-    hostname: mongo3
-    container_name: mongo3
-    image: mongo
+  sensor_backend:
+    build: ./sensor_backend
+    container_name: sensor_backend
+    restart: unless-stopped
+    working_dir: /usr/src/app
     volumes:
-      - ./data/data3/db:/data/db
-      - ./data/data3/configdb:/data/configdb
+      - ./sensor_backend:/usr/src/app
+      - ./sensor_backend/node_modules:/usr/src/app/node_modules
+    ports:
+      - '5001:5000'
+    depends_on:
+      - mongo
     networks:
       - app-network
-    expose:
-      - 27017
+      - sensor-network
+    command: 'yarn start'
+
+  mongo:
+    image: mongo
+    restart: always
+    container_name: 'mongodb'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: '123456'
+    volumes:
+      - ./db_data/mongo/db:/data/db
+      - ./db_data/mongo/configdb:/data/configdb
+    networks:
+      - sensor-network
+
+  mongo-express:
+    image: mongo-express
+    container_name: 'mongo-express'
+    restart: always
+    ports:
+      - 8081:8081
+    depends_on:
+      - mongo
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: 123456
-    ports:
-      - 30003:27017
-    restart: always
-    entrypoint: ['/usr/bin/mongod', '--bind_ip_all', '--replSet', 'devrs']
-
-  # rabbitmq3:
-  #   image: rabbitmq:3-management
-  #   hostname: rabbitmq
-  #   container_name: rabbitmq
-  #   environment:
-  #     RABBITMQ_ERLANG_COOKIE: 'secret-cookie-here'
-  #   volumes:
-  #     - ./rabbitmq-data:/var/lib/rabbitmq
-  #   restart: always
-  #   ports:
-  #     - 5672:5672
-  #     - 8000:15672
-  #     - 25676:25676
-  #   networks:
-  #     - app-network
+      ME_CONFIG_MONGODB_ADMINPASSWORD: '123456'
+    networks:
+      - sensor-network
 
 networks:
   app-network:
+    driver: bridge
+  sensor-network:
     driver: bridge
