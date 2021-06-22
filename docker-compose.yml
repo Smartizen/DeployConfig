@@ -18,38 +18,6 @@ services:
       - app-network
     command: 'yarn start:dev'
 
-  # admin:
-  #   hostname: admin
-  #   image: 'node:10-alpine'
-  #   container_name: admin
-  #   restart: always
-  #   working_dir: /app
-  #   volumes:
-  #     - ./admin:/app
-  #   depends_on:
-  #     - backend
-  #   ports:
-  #     - '8000:8000'
-  #   networks:
-  #     - app-network
-  #   command: 'yarn serve'
-
-  # frontend:
-  #   hostname: frontend
-  #   image: 'node:10-alpine'
-  #   container_name: frontend
-  #   restart: always
-  #   working_dir: /app
-  #   volumes:
-  #     - ./frontend:/app
-  #   depends_on:
-  #     - backend
-  #   ports:
-  #     - '8080:8080'
-  #   networks:
-  #     - app-network
-  #   command: 'yarn serve'
-
   postgres:
     image: postgres:12-alpine
     container_name: 'postgres'
